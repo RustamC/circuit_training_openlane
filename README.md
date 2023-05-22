@@ -40,7 +40,7 @@ For our experiments we will be using `manual_macro_placement_test` with some [mo
 2) added more macros,
 3) manual macro placement disabled by default.
 
-You can just copy [test_macro](https://github.com/RustamC/OpenLane/tree/fpi/designs/test_macro) into your `/home/user/src/OpenLane/designs` directory.
+You can just copy [test_macro](https://github.com/RustamC/OpenLane/tree/fpi/designs/test_macro) into your `/home/$USER/src/OpenLane/designs` directory.
 
 ### Initial LED/DEF generation
 
@@ -240,10 +240,11 @@ plc file: /workspace/circuit_training/convertor/test_macro/out/19cols_28rows/g10
 ```
 
 It's a little bit different from running the standard flow:
-1) we set SEQUENCE_LENGTH param = number of macros + 1.
+1) `SEQUENCE_LENGTH` param is set to number of macros + 1.
+2) `NUM_ITERATIONS` is also set to speed up the placement process.
 
 <details>
-  <summary>Running instructions:</summary>
+    <summary><b>Running instructions:</b></summary>
     
 ```bash
 # Sets the environment variables needed by each job. These variables are
@@ -255,7 +256,7 @@ export REVERB_SERVER="127.0.0.1:${REVERB_PORT}"
 export NETLIST_FILE=/workspace/circuit_training/convertor/test_macro/out/19cols_28rows/g10_ub5_nruns10_c5_r3_v3_rc1/netlist.pb.txt
 export INIT_PLACEMENT=/workspace/circuit_training/convertor/test_macro/out/19cols_28rows/g10_ub5_nruns10_c5_r3_v3_rc1/initial.plc
 export SEQUENCE_LENGTH=11
-export NUM_ITERATIONS=100
+export NUM_ITERATIONS=50
 
 # Creates all the tmux sessions that will be used.
 tmux new-session -d -s reverb_server && \
@@ -333,6 +334,95 @@ python3 -m circuit_training.learning.ppo_collect \
     
 ## Step 4. Conversion from CT placement (\*.plc) into OpenLane macro placement (\*.cfg)
 
+After CT is finished, you will find final placement file `rl_opt_placement.plc` in `/home/$USER/src/circuit_training/logs/run_00/111/`.
+To convert the final macro placement into OpenLane macro placement (\*.cfg), we should update `config.json` in `/home/$USER/src/circuit_training/circuit_training/convertor`:
+```json
+{
+    "CONVERTOR": "p2m",
+    "DESIGN": "test_macro",
+    "NETLIST": "./test_macro/test_macro.v",
+
+    "DEF": "./test_macro/test_macro.def",
+    "LEFS": ["./test_macro/test_macro.lef"],
+    "LIBS": ["./test_macro/test_macro.lib"],
+    "PB_FILE": "./test_macro/out/19cols_28rows/g10_ub5_nruns10_c5_r3_v3_rc1/netlist.pb.txt",
+    "PLC_FILE": "/workspace/logs/run_00/111/rl_opt_placement.plc",
+    "OPENROAD_EXE": "./utils/openroad",
+
+    "MACRO_CFG": "./test_macro/test_macro.cfg"
+}
+```
+
+As you can see:
+1) `PB_FILE` now is pointing to clustered netlist,
+2) `PLC_FILE` now is pointing to CT placement,
+3) `CONVERTOR` value has changed.
+    
+To run the convertor you should first exit tmux (`ctrl + b` followed by `d`) & from the same Docker container run:
+```bash
+tmux kill-server
+cd circuit_training/convertor
+python3 convertor.py config.json
+exit
+```
+
+<details>
+  <summary>Output:</summary>
+
+  ```bash
+  root@88403868560e:/workspace# tmux kill-server
+root@88403868560e:/workspace# cd circuit_training/convertor
+root@88403868560e:/workspace/circuit_training/convertor# python3 convertor.py config.json
+#[INFO] Reading from ./test_macro/out/19cols_28rows/g10_ub5_nruns10_c5_r3_v3_rc1/netlist.pb.txt
+OpenROAD v2.0-5083-ga783d1b9c
+This program is licensed under the BSD-3 license. See the LICENSE file for details.
+Components of this program may be licensed under more restrictive licenses which must be honored.
+[INFO ODB-0222] Reading LEF file: ./test_macro/test_macro.lef
+[WARNING ODB-0220] WARNING (LEFPARS-2036): SOURCE statement is obsolete in version 5.6 and later.
+The LEF parser will ignore this statement.
+To avoid this warning in the future, remove this statement from the LEF file with version 5.6 or later. See file ./test_macro/test_macro.lef at line 68353.
+
+[INFO ODB-0223]     Created 13 technology layers
+[INFO ODB-0224]     Created 25 technology vias
+[INFO ODB-0225]     Created 442 library cells
+[INFO ODB-0226] Finished LEF file:  ./test_macro/test_macro.lef
+[INFO ODB-0127] Reading DEF file: ./test_macro/test_macro.def
+[INFO ODB-0128] Design: test_macro
+[INFO ODB-0130]     Created 315 pins.
+[INFO ODB-0131]     Created 10 components and 380 component-terminals.
+[INFO ODB-0133]     Created 324 nets and 360 connections.
+[INFO ODB-0134] Finished DEF file: ./test_macro/test_macro.def
+Output cfg: ./test_macro/test_macro.cfg
+root@88403868560e:/workspace/circuit_training/convertor#  
+  ```
+</details>
+    
+After conversion you will find `test_macro.cfg` in `/home/$USER/src/circuit_training/circuit_training/convertor/test_macro`.
+We should copy it to OpenLane design folder:
+```bash
+cp ./circuit_training/convertor/test_macro/test_macro.cfg ../OpenLane/designs/test_macro
+```
+
 ## Step 5. Running OpenLane with CT macro placement
 
+Now in this final step we should update design configuration in `config.json` in `/home/$USER/src/OpenLane/designs/test_macro` and set `MACRO_PLACEMENT_CFG` (path to CT macro placement file):
+```json
+{
+    "PDK": "sky130A",
+    ...
+    "MACRO_PLACEMENT_CFG": "dir::test_macro.cfg",
+    ...
+}
+```
+And then run:
+```bash
+cd ../OpenLane
+make mount
+./flow.tcl -design test_macro -run after_ct
+```
+
+## The end
+
+![The end](https://i.pinimg.com/236x/7f/ad/fe/7fadfe1460f434e256e012136d6c81de.jpg?nii=t)
+    
 [^1]: The LEF/DEF to ProtoBuf converter and the ProtoBuf parser are taken from the [MacroPlacement](https://github.com/TILOS-AI-Institute/MacroPlacement) project with slight modifications.
