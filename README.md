@@ -187,7 +187,7 @@ You can:
 1) try to rerun clustering until hmetis generates the required clustering, or
 2) just reduce the number of std cells clusters in [grouper.py](https://github.com/RustamC/circuit_training/blob/80fe78fc795d9390048aa795ce6feb3edf2f6706/circuit_training/grouping/grouper.py#L57) and rerun clustering.
 
-In out example, you can jest set the number of std cells clusters to 10 and it should work.
+In out example, you can just set the number of std cells clusters to 10 and it should work.
 
 <details>
   <summary>Output:</summary>
@@ -423,4 +423,5 @@ make mount
 <p align="center">
   <img src="https://i.pinimg.com/236x/7f/ad/fe/7fadfe1460f434e256e012136d6c81de.jpg?nii=t" alt="The End!">
 </p>
+
 [^1]: The LEF/DEF to ProtoBuf converter and the ProtoBuf parser are taken from the [MacroPlacement](https://github.com/TILOS-AI-Institute/MacroPlacement) project with slight modifications.
