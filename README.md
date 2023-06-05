@@ -1,4 +1,4 @@
-# Instructions on how to use/test Circuit Training (CT) in OpenLane flow
+# Instructions on how to run Circuit Training (CT) in OpenLane flow
 
 ## Main steps overview
 1. Install CT with convertors and OpenLane,
