@@ -420,8 +420,4 @@ cd ../OpenLane
 make mount
 ./flow.tcl -design test_macro -run after_ct
 ```
-<p align="center">
-  <img src="https://i.pinimg.com/236x/7f/ad/fe/7fadfe1460f434e256e012136d6c81de.jpg?nii=t" alt="The End!">
-</p>
-
 [^1]: The LEF/DEF to ProtoBuf converter and the ProtoBuf parser are taken from the [MacroPlacement](https://github.com/TILOS-AI-Institute/MacroPlacement) project with slight modifications.
